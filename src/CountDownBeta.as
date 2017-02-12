@@ -17,11 +17,11 @@ package
 		private var FTFTimeVec:Vector.<TextField>;
 		private var FTFNameVec:Vector.<TextField>;
 		private var FTFCoolVec:Vector.<TextField>;
+		private var FBtnStartVec:Vector.<MovieClip>;
 		private var FCountSo:SharedObject;
-		private var FBtn:MovieClip;
 		private var FBtnSave:MovieClip;
-		private var FIsStart:Boolean;
-		private var FCurTime:int;
+		private var FIsStartVec:Vector.<Boolean>;
+		private var FCurTimeVec:Vector.<int>;
 		private var FTFTips:TextField;
 		
 		public function CountDownBeta() 
@@ -36,6 +36,9 @@ package
 			FTFTimeVec = new Vector.<TextField>(Item_Num);
 			FTFNameVec = new Vector.<TextField>(Item_Num);
 			FTFCoolVec = new Vector.<TextField>(Item_Num);
+			FBtnStartVec = new Vector.<MovieClip>(Item_Num);
+			FIsStartVec = new Vector.<Boolean>(Item_Num);
+			FCurTimeVec = new Vector.<int>(Item_Num);
 			
 			for (var i:int = 0; i < Item_Num; i++) 
 			{
@@ -44,9 +47,10 @@ package
 				FTFTimeVec[i].restrict = "0-9";
 				FTFNameVec[i] = Mc["TF_Name"];
 				FTFCoolVec[i] = Mc["TF_Cool"];
+				FIsStartVec[i] = false;
+				FBtnStartVec[i] = Mc["MC_Start"];
+				FBtnStartVec[i].addEventListener(MouseEvent.CLICK, OnClick);
 			}
-			FBtn = MovieClip(getChildByName("MC_Start"));
-			FBtn.addEventListener(MouseEvent.CLICK, OnClick);
 			
 			FBtnSave = MovieClip(getChildByName("MC_Save"));
 			FBtnSave.addEventListener(MouseEvent.CLICK, OnSave);
@@ -62,6 +66,7 @@ package
 			var Index:int;
 			var Count:int;
 			var Arr:Array;
+			var Str:String;
 			
 			FCountSo = SharedObject.getLocal("QiuqiuCount");	
 			if (FCountSo.data.Arr == null)
@@ -72,18 +77,20 @@ package
 					BossObj = new Object();
 					BossObj["Time"] = "0";
 					BossObj["Boss"] = "BossName";
-					FCountSo.data.Arr.push(BossObj);					
+					FCountSo.data.Arr.push(BossObj);
 				}
 				
 				FCountSo.flush();
 			}
 			
-			Arr = FCountSo.data.Arr;			
+			Arr = FCountSo.data.Arr;
 			
 			for (Index = 0; Index < Item_Num; Index++) 
 			{
 				FTFTimeVec[Index].text = Arr[Index]["Time"];
 				FTFNameVec[Index].text = Arr[Index]["Boss"];
+				Str = Arr[Index]["Time"];
+				FBtnStartVec[Index].visible = !(Str == null || Str == "0" || Str == "");				
 			}
 			
 		}
@@ -92,19 +99,14 @@ package
 			E:MouseEvent):void
 		{
 			var Index:int;
-			var Count:int;
+			var Btn:MovieClip;
 			
-			FIsStart = !FIsStart;
-			FCurTime = getTimer() / 1000;
+			Btn = E.target as MovieClip;
+			Index = FBtnStartVec.indexOf(Btn);
+			FIsStartVec[Index] = true;
+			FCurTimeVec[Index] = getTimer() / 1000;			
 			
-			if (FIsStart)
-			{
-				FTFTips.text = "开始计时";
-			}
-			else
-			{
-				FTFTips.text = "暂停";
-			}
+			FTFTips.text = "开始计时";
 		}
 		
 		private function OnSave(
@@ -112,12 +114,15 @@ package
 		{
 			var Index:int;
 			var BossObj:Object;
+			var Str:String;
 			
 			for (Index = 0; Index < Item_Num; Index++) 
 			{
 				BossObj = FCountSo.data.Arr[Index];
 				BossObj["Time"] = FTFTimeVec[Index].text;
 				BossObj["Boss"] = FTFNameVec[Index].text;
+				Str = BossObj["Time"];
+				FBtnStartVec[Index].visible = !(Str == null || Str == "0" || Str == "");
 			}
 			
 			FCountSo.flush();
@@ -128,7 +133,6 @@ package
 		private function OnEnterFrame(
 			E:Event):void
 		{
-			var Check:Boolean;
 			var TotalTime:int;
 			var Hour:int;
 			var Min:int;
@@ -137,19 +141,18 @@ package
 			var Str:String;
 			var Time:int;
 			
-			if (!FIsStart) return;
-			
 			for (Index = 0; Index < Item_Num; Index++) 
-			{
+			{				
+				if (!FIsStartVec[Index]) continue;
 				Str = FTFTimeVec[Index].text;
 				if (Str == null || Str == "0" || Str == "")
 				{
 					FTFCoolVec[Index].text = "计时结束";
+					FIsStartVec[Index] = false;
 					continue;
-				}
-				Check = true;		
+				}	
 				Time = int(FCountSo.data.Arr[Index]["Time"]);
-				TotalTime = FCurTime + Time * 60 - int(getTimer() / 1000);
+				TotalTime = FCurTimeVec[Index] + Time * 60 - int(getTimer() / 1000);
 				Hour = TotalTime / 3600;
 				TotalTime = (TotalTime - Hour * 3600);
 				Min = TotalTime / 60;
@@ -160,7 +163,6 @@ package
 					(Sec >= 10?Sec:"0" + Sec);
 			}
 			
-			FIsStart = Check;
 		}
 		
 		
